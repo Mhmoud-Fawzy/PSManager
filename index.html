@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title> مدير محل PS — مركز ألعاب بلايستيشن</title>
+  <meta name="description" content="إدارة جلسات الألعاب وتتبع وقت اللعب وحساب التكلفة لمحل البلايستيشن." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    /* ──────────────────────────────────────────
+       Design Tokens
+    ────────────────────────────────────────── */
+    :root {
+      --bg-base:        #0a0a14;
+      --bg-card:        #12121f;
+      --bg-card-hover:  #1a1a2e;
+      --bg-glass:       rgba(255,255,255,0.04);
+      --border:         rgba(255,255,255,0.08);
+      --border-focus:   rgba(120,80,255,0.6);
+
+      --accent:         #7c4dff;
+      --accent-light:   #9d6fff;
+      --accent-glow:    rgba(124,77,255,0.35);
+
+      --ps-blue:        #003791;
+      --ps-blue-light:  #0057b7;
+
+      --green:          #00e676;
+      --green-bg:       rgba(0,230,118,0.12);
+      --green-border:   rgba(0,230,118,0.3);
+
+      --red:            #ff1744;
+      --red-bg:         rgba(255,23,68,0.12);
+      --red-border:     rgba(255,23,68,0.3);
+
+      --orange:         #ff6d00;
+      --orange-bg:      rgba(255,109,0,0.12);
+      --orange-border:  rgba(255,109,0,0.35);
+
+      --gold:           #ffd740;
+      --gold-bg:        rgba(255,215,64,0.12);
+
+      --text-primary:   #f0f0ff;
+      --text-secondary: #9292b0;
+      --text-muted:     #5a5a78;
+
+      --radius-sm:      8px;
+      --radius-md:      14px;
+      --radius-lg:      20px;
+      --radius-xl:      28px;
+
+      --shadow-card:    0 8px 32px rgba(0,0,0,0.45);
+      --shadow-glow:    0 0 24px var(--accent-glow);
+      --transition:     0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Cairo', system-ui, sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(124,77,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,77,255,0.04) 1px, transparent 1px);
+      background-size: 50px 50px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      top: -30%; right: -10%;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(124,77,255,0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+      animation: driftBlob 18s ease-in-out infinite alternate;
+    }
+    @keyframes driftBlob {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(-80px, 120px) scale(1.15); }
+    }
+
+    /* ── Layout ── */
+    .wrapper {
+      position: relative; z-index: 1;
+      max-width: 1200px; margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+    header {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 28px 0 20px;
+      border-bottom: 1px solid var(--border);
+      gap: 16px; flex-wrap: wrap;
+    }
+    .logo { display: flex; align-items: center; gap: 14px; }
+    .logo-icon {
+      width: 52px; height: 52px;
+      background: linear-gradient(135deg, var(--accent), #3d5afe);
+      border-radius: var(--radius-md);
+      display: grid; place-items: center;
+      font-size: 26px; box-shadow: var(--shadow-glow); flex-shrink: 0;
+    }
+    .logo-text h1 {
+      font-size: 1.5rem; font-weight: 800;
+      background: linear-gradient(120deg, #fff 30%, var(--accent-light));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; line-height: 1.2;
+    }
+    .logo-text p { font-size: 0.78rem; color: var(--text-secondary); font-weight: 600; }
+    .header-stats { display: flex; gap: 12px; flex-wrap: wrap; }
+    .stat-pill {
+      background: var(--bg-glass); border: 1px solid var(--border);
+      border-radius: 999px; padding: 6px 16px; font-size: 0.88rem;
+      display: flex; align-items: center; gap: 7px; backdrop-filter: blur(8px);
+    }
+    .stat-pill .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .stat-pill .dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .stat-pill .dot.red   { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 28px; margin-top: 32px; align-items: start;
+    }
+    @media (max-width: 860px) { .main-grid { grid-template-columns: 1fr; } }
+
+    /* ── Panel ── */
+    .panel {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 24px; box-shadow: var(--shadow-card);
+    }
+    .panel-title {
+      font-size: 1rem; font-weight: 700; color: var(--text-primary);
+      margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+    }
+
+    /* ── Form ── */
+    .form-group { margin-bottom: 16px; }
+    label {
+      display: block; font-size: 0.84rem; font-weight: 700;
+      color: var(--text-secondary); margin-bottom: 7px;
+    }
+    input[type="text"], input[type="number"] {
+      width: 100%; background: var(--bg-glass); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px 16px;
+      color: var(--text-primary); font-family: 'Cairo', inherit; font-size: 0.95rem;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      outline: none; -moz-appearance: textfield; appearance: textfield;
+      text-align: right; direction: rtl;
+    }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    input:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(124,77,255,0.18); }
+    input::placeholder { color: var(--text-muted); }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 11px 20px; border: none; border-radius: var(--radius-sm);
+      font-family: 'Cairo', inherit; font-size: 0.92rem; font-weight: 700;
+      cursor: pointer; transition: all var(--transition); outline: none; white-space: nowrap;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, var(--accent), #3d5afe);
+      color: #fff; box-shadow: 0 4px 18px rgba(124,77,255,0.4);
+    }
+    .btn-primary:hover { box-shadow: 0 6px 24px rgba(124,77,255,0.6); transform: translateY(-1px); }
+    .btn-start {
+      background: var(--green-bg); color: var(--green);
+      border: 1px solid var(--green-border); flex: 1;
+    }
+    .btn-start:hover:not(:disabled) { background: rgba(0,230,118,0.22); box-shadow: 0 0 14px rgba(0,230,118,0.2); }
+    .btn-stop {
+      background: var(--red-bg); color: var(--red);
+      border: 1px solid var(--red-border); flex: 1;
+    }
+    .btn-stop:hover:not(:disabled) { background: rgba(255,23,68,0.22); box-shadow: 0 0 14px rgba(255,23,68,0.2); }
+    .btn-danger-outline {
+      background: transparent; color: var(--red);
+      border: 1px solid var(--red-border);
+      padding: 7px 14px; font-size: 0.85rem;
+    }
+    .btn-danger-outline:hover { background: var(--red-bg); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+    /* ── Extend Buttons ── */
+    .btn-extend {
+      background: var(--orange-bg); color: var(--orange);
+      border: 1px solid var(--orange-border);
+      font-size: 0.88rem; padding: 10px 14px; flex: 1;
+    }
+    .btn-extend:hover:not(:disabled) {
+      background: rgba(255,109,0,0.22);
+      box-shadow: 0 0 14px rgba(255,109,0,0.25);
+      transform: translateY(-1px);
+    }
+    .btn-extend:active { transform: scale(0.95); }
+
+    /* ── Device Cards ── */
+    #devices-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 18px;
+    }
+    .device-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-card);
+      transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+      display: flex; flex-direction: column; gap: 14px;
+      position: relative; overflow: hidden;
+    }
+    .device-card::before {
+      content: ''; position: absolute; top: 0; right: 0; left: 0;
+      height: 3px; background: linear-gradient(90deg, #3d5afe, var(--accent));
+      opacity: 0; transition: opacity var(--transition);
+    }
+    .device-card:hover { border-color: rgba(124,77,255,0.3); transform: translateY(-3px); box-shadow: var(--shadow-card), var(--shadow-glow); }
+    .device-card:hover::before { opacity: 1; }
+    .device-card.running { border-color: var(--red-border); }
+    .device-card.running::before { opacity: 1; background: linear-gradient(90deg, #ff6d00, var(--red)); }
+
+    .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .card-name { font-size: 1.05rem; font-weight: 800; color: var(--text-primary); }
+    .card-price { font-size: 0.8rem; color: var(--text-secondary); margin-top: 3px; display: flex; align-items: center; gap: 5px; }
+    .card-price .price-val { color: var(--gold); font-weight: 800; font-size: 0.92rem; }
+
+    .status-badge { padding: 4px 12px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; flex-shrink: 0; }
+    .status-badge.available { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+    .status-badge.running {
+      background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border);
+      animation: pulseBadge 1.8s ease-in-out infinite;
+    }
+    .status-badge.paused {
+      background: var(--orange-bg); color: var(--orange); border: 1px solid var(--orange-border);
+      animation: pulseBadge 2.5s ease-in-out infinite;
+    }
+    @keyframes pulseBadge { 0%,100%{box-shadow:none} 50%{box-shadow:0 0 10px rgba(255,23,68,0.5)} }
+
+    /* Extended badge on device */
+    .extended-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--orange-bg); border: 1px solid var(--orange-border);
+      color: var(--orange); border-radius: 999px; font-size: 0.72rem;
+      font-weight: 700; padding: 2px 8px;
+    }
+
+    .timer-block {
+      background: rgba(0,0,0,0.15); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 14px;
+      display: none; align-items: center; gap: 10px;
+    }
+    .device-card.running .timer-block { display: flex; background: rgba(255,23,68,0.06); border-color: var(--red-border); }
+    .timer-icon { font-size: 1.1rem; }
+    .device-card.running .timer-icon { animation: spin 2s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .timer-display {
+      font-size: 1.3rem; font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-secondary); letter-spacing: 0.04em;
+      line-height: 1; direction: ltr;
+    }
+    .device-card.running .timer-display { color: var(--red); }
+    .timer-label { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+    .card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .card-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: 10px; border-top: 1px solid var(--border); margin-top: auto;
+    }
+    .start-time-label { font-size: 0.78rem; color: var(--text-muted); }
+
+    /* ── Session History ── */
+    .history-section { margin-top: 48px; }
+    .history-table {
+      width: 100%; border-collapse: collapse; margin-top: 20px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden;
+    }
+    .history-table th, .history-table td { padding: 12px 16px; text-align: right; border-bottom: 1px solid var(--border); }
+    .history-table th { font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); background: var(--bg-glass); }
+    .history-table td { font-size: 0.9rem; color: var(--text-primary); }
+    .history-table tbody tr:last-child td { border-bottom: none; }
+    .history-table tbody tr:hover { background: var(--bg-card-hover); }
+
+    /* ── Modals ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.72); backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 100; display: flex; align-items: center;
+      justify-content: center; padding: 24px;
+      opacity: 0; pointer-events: none;
+      transition: opacity var(--transition);
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-xl); padding: 36px 32px;
+      max-width: 460px; width: 100%;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.7), var(--shadow-glow);
+      transform: scale(0.92) translateY(20px);
+      transition: transform var(--transition);
+      position: relative; overflow-y: auto; max-height: 90vh;
+    }
+    .modal-overlay.open .modal { transform: scale(1) translateY(0); }
+    .modal-icon {
+      width: 64px; height: 64px; background: var(--gold-bg);
+      border: 1px solid rgba(255,215,64,0.3); border-radius: var(--radius-md);
+      display: grid; place-items: center; font-size: 32px; margin-bottom: 20px;
+    }
+    .modal h2 { font-size: 1.4rem; font-weight: 800; margin-bottom: 6px; }
+    .modal .subtitle { color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 24px; }
+    .result-rows { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    .result-row {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--bg-glass); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px 16px;
+    }
+    .result-row .row-label { font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+    .result-row .row-value { font-size: 1rem; font-weight: 700; color: var(--text-primary); direction: ltr; }
+    .result-row.highlight .row-value { color: var(--gold); font-size: 1.2rem; }
+    .modal-close {
+      width: 100%;
+      background: linear-gradient(135deg, var(--accent), #3d5afe);
+      color: #fff; box-shadow: 0 4px 18px rgba(124,77,255,0.4);
+    }
+
+    /* ── Stop / Extend Modal ── */
+    .modal-section-label {
+      font-size: 0.8rem; font-weight: 800;
+      color: var(--text-secondary); text-transform: uppercase;
+      letter-spacing: 0.07em; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .modal-section-label::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    .extend-btns { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .extend-btns .btn-extend { min-width: 0; }
+    .custom-extend-row {
+      display: flex; gap: 8px; align-items: center; margin-bottom: 18px;
+    }
+    .custom-extend-row input {
+      flex: 1; padding: 10px 14px; font-size: 0.9rem;
+    }
+    .custom-extend-row .btn-extend { flex-shrink: 0; padding: 10px 16px; }
+    .live-preview {
+      background: rgba(255,109,0,0.07);
+      border: 1px solid var(--orange-border);
+      border-radius: var(--radius-sm); padding: 10px 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 18px; font-size: 0.88rem;
+    }
+    .live-preview .lp-label { color: var(--text-secondary); }
+    .live-preview .lp-values { display: flex; gap: 16px; }
+    .live-preview .lp-item { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+    .live-preview .lp-num { font-weight: 800; font-size: 1rem; color: var(--orange); direction: ltr; }
+    .live-preview .lp-sub { font-size: 0.72rem; color: var(--text-muted); }
+    .confirm-end-btn {
+      width: 100%; background: var(--red-bg); color: var(--red);
+      border: 1px solid var(--red-border);
+      margin-bottom: 8px; padding: 12px;
+    }
+    .confirm-end-btn:hover { background: rgba(255,23,68,0.22); box-shadow: 0 0 14px rgba(255,23,68,0.2); }
+    .cancel-btn {
+      width: 100%; background: var(--bg-glass);
+      color: var(--text-secondary); border: 1px solid var(--border);
+    }
+    .cancel-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+    .divider { height: 1px; background: var(--border); margin: 18px 0; }
+
+    /* Extension indicator on timer block */
+    .extra-time-indicator {
+      font-size: 0.72rem; color: var(--orange);
+      margin-top: 2px; display: none;
+    }
+    .has-extension .extra-time-indicator { display: block; }
+
+    /* ── Empty State ── */
+    .empty-state {
+      grid-column: 1/-1; text-align: center; padding: 60px 20px;
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+    .empty-state .emoji { font-size: 3.5rem; }
+    .empty-state h3 { font-size: 1.15rem; font-weight: 700; color: var(--text-secondary); }
+    .empty-state p { font-size: 0.88rem; color: var(--text-muted); max-width: 280px; }
+
+    /* ── Toast ── */
+    #toast-container {
+      position: fixed; bottom: 28px; left: 28px;
+      z-index: 200; display: flex; flex-direction: column;
+      gap: 10px; pointer-events: none;
+    }
+    .toast {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 14px 20px; font-size: 0.9rem;
+      display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-card);
+      animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+      min-width: 260px; pointer-events: all;
+    }
+    @keyframes toastIn  { from{transform:translateX(-110%);opacity:0} to{transform:translateX(0);opacity:1} }
+    @keyframes toastOut { from{opacity:1} to{opacity:0;transform:translateX(-110%)} }
+    .toast.success { border-color: var(--green-border); }
+    .toast.error   { border-color: var(--red-border); }
+    .toast.info    { border-color: rgba(124,77,255,0.4); }
+    .toast.warning { border-color: var(--orange-border); }
+
+    /* ── Misc ── */
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .section-title { font-size: 1.1rem; font-weight: 800; }
+    .device-count {
+      background: var(--bg-glass); border: 1px solid var(--border);
+      border-radius: 999px; padding: 4px 12px; font-size: 0.85rem; color: var(--text-secondary);
+    }
+
+    /* ── Filter Buttons ── */
+    .filter-buttons {
+      display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap;
+    }
+    .filter-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 8px 16px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); background: var(--bg-glass);
+      color: var(--text-secondary); font-family: 'Cairo', inherit;
+      font-size: 0.9rem; font-weight: 700; cursor: pointer;
+      transition: all var(--transition); outline: none;
+    }
+    .filter-btn:hover { 
+      border-color: var(--accent);
+      color: var(--text-primary);
+      background: rgba(124,77,255,0.08);
+    }
+    .filter-btn.active {
+      background: var(--accent-glow);
+      border-color: var(--accent);
+      color: var(--accent-light);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+    .ps-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: linear-gradient(135deg, var(--ps-blue), var(--ps-blue-light));
+      border-radius: 4px; padding: 2px 7px; font-size: 0.72rem; font-weight: 800; color: #fff;
+    }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(124,77,255,0.3); border-radius: 99px; }
+
+    @media (max-width: 540px) {
+      header { justify-content: center; text-align: center; }
+      .logo { flex-direction: column; }
+      .header-stats { justify-content: center; }
+      .modal { padding: 28px 20px; }
+      .extend-btns { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── Toast Container ───────────────────── -->
+<div id="toast-container" aria-live="polite"></div>
+
+<!-- ═══════════════════════════════════════
+     SESSION RESULT MODAL (shown after end)
+════════════════════════════════════════ -->
+<div class="modal-overlay" id="result-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal">
+    <div class="modal-icon"><i class="fas fa-trophy"></i></div>
+    <h2 id="modal-title">انتهت الجلسة!</h2>
+    <p class="subtitle" id="modal-device-name">PS5-1 — ملخص الجلسة</p>
+    <div class="result-rows">
+      <div class="result-row">
+        <span class="row-label"><i class="fas fa-clock"></i> وقت البداية</span>
+        <span class="row-value" id="modal-start">—</span>
+      </div>
+      <div class="result-row">
+        <span class="row-label"><i class="fas fa-flag-checkered"></i> وقت النهاية</span>
+        <span class="row-value" id="modal-end">—</span>
+      </div>
+      <div class="result-row">
+        <span class="row-label"><i class="fas fa-hourglass-end"></i> المدة الفعلية</span>
+        <span class="row-value" id="modal-duration">—</span>
+      </div>
+      <div class="result-row" id="modal-extra-row" style="display:none;">
+        <span class="row-label"><i class="fas fa-plus-circle"></i> وقت إضافي</span>
+        <span class="row-value" id="modal-extra" style="color:var(--orange);">—</span>
+      </div>
+      <div class="result-row highlight">
+        <span class="row-label"><i class="fas fa-money-bill"></i> إجمالي التكلفة</span>
+        <span class="row-value" id="modal-cost">—</span>
+      </div>
+    </div>
+    <button class="btn modal-close" id="modal-close-btn"><i class="fas fa-check"></i> إغلاق</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     STOP / EXTEND MODAL
+════════════════════════════════════════ -->
+<div class="modal-overlay" id="stop-extend-modal" role="dialog" aria-modal="true" aria-labelledby="se-title">
+  <div class="modal">
+
+    <div class="modal-icon" style="background:var(--red-bg);border-color:var(--red-border);"><i class="fas fa-hand" style="color:var(--red);"></i></div>
+    <h2 id="se-title">إيقاف أو تمديد الجلسة</h2>
+    <p class="subtitle" id="se-device-name">...</p>
+
+    <!-- Live Cost Preview -->
+    <div class="live-preview">
+      <span class="lp-label">⚡ الآن</span>
+      <div class="lp-values">
+        <div class="lp-item">
+          <span class="lp-num" id="se-live-time">00:00</span>
+          <span class="lp-sub">الوقت المنقضي</span>
+        </div>
+        <div class="lp-item">
+          <span class="lp-num" id="se-live-cost">0.00 ج</span>
+          <span class="lp-sub">التكلفة الحالية</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Extend Section -->
+    <div class="modal-section-label"><i class="fas fa-hourglass-half"></i> تمديد الجلسة</div>
+
+    <div class="extend-btns">
+      <button class="btn btn-extend" data-minutes="15">+15 دقيقة</button>
+      <button class="btn btn-extend" data-minutes="30">+30 دقيقة</button>
+      <button class="btn btn-extend" data-minutes="60">+60 دقيقة</button>
+    </div>
+
+    <div class="custom-extend-row">
+      <input
+        type="number"
+        id="custom-extend-input"
+        placeholder="دقائق مخصصة..."
+        min="1"
+        max="480"
+        step="1"
+        dir="rtl"
+      />
+      <button class="btn btn-extend" id="custom-extend-btn">+ تمديد</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- End Section -->
+    <div class="modal-section-label"><i class="fas fa-stop-circle"></i> إنهاء الجلسة</div>
+    <button class="btn confirm-end-btn" id="se-confirm-end-btn"><i class="fas fa-check-circle"></i> تأكيد إنهاء الجلسة</button>
+    <button class="btn cancel-btn"      id="se-cancel-btn"><i class="fas fa-arrow-left"></i> العودة</button>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SESSION ENDED MODAL (Time Limit Reached)
+════════════════════════════════════════ -->
+<div class="modal-overlay" id="session-ended-modal" role="dialog" aria-modal="true" aria-labelledby="sen-title">
+  <div class="modal">
+    <div class="modal-icon" style="background:var(--orange-bg);border-color:var(--orange-border);">
+      <i class="fas fa-clock" style="color:var(--orange);"></i>
+    </div>
+    <h2 id="sen-title">انتهى الوقت المحدد!</h2>
+    <p class="subtitle" id="sen-device-name">...</p>
+
+    <div class="result-rows">
+      <div class="result-row">
+        <span class="row-label"><i class="fas fa-hourglass-end"></i> المدة المنقضية</span>
+        <span class="row-value" id="sen-duration">00:00</span>
+      </div>
+      <div class="result-row">
+        <span class="row-label"><i class="fas fa-money-bill"></i> التكلفة الحالية</span>
+        <span class="row-value" id="sen-cost">0 جنيه</span>
+      </div>
+    </div>
+
+    <!-- Live Time Preview (updates while modal open) -->
+    <div class="live-preview" style="margin-bottom: 18px;">
+      <span class="lp-label"><i class="fas fa-info-circle"></i> اختر أحد الخيارات</span>
+    </div>
+
+    <!-- Extend Buttons Section -->
+    <div class="modal-section-label"><i class="fas fa-hourglass-half"></i> تمديد الوقت</div>
+    <div class="extend-btns">
+      <button class="btn btn-extend" data-extend-minutes="15">15 دقيقة</button>
+      <button class="btn btn-extend" data-extend-minutes="30">30 دقيقة</button>
+      <button class="btn btn-extend" data-extend-minutes="60">ساعة</button>
+    </div>
+    <div class="custom-extend-row">
+      <input type="number" id="sen-custom-minutes" placeholder="دقائق مخصصة..." min="1" max="480" step="1" dir="rtl" />
+      <button class="btn btn-extend" id="sen-custom-extend-btn"><i class="fas fa-plus-circle"></i> تمديد مخصص</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- End Session -->
+    <div class="modal-section-label"><i class="fas fa-stop-circle"></i> إنهاء الجلسة</div>
+    <button class="btn confirm-end-btn" id="sen-confirm-end-btn">
+      <i class="fas fa-check-circle"></i> تأكيد إنهاء الجلسة
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     START SESSION OPTIONS MODAL
+════════════════════════════════════════ -->
+<div class="modal-overlay" id="start-options-modal" role="dialog" aria-modal="true" aria-labelledby="so-title">
+  <div class="modal">
+    <div class="modal-icon" style="background:var(--green-bg);border-color:var(--green-border);"><i class="fas fa-play" style="color:var(--green);"></i></div>
+    <h2 id="so-title">Start Session <span style="font-weight:500;color:var(--text-secondary);">خيارات التشغيل</span></h2>
+    <p class="subtitle" id="so-device-name">...</p>
+
+    <!-- Open Session -->
+    <div class="modal-section-label" style="margin-top: 10px;"><i class="fas fa-infinity"></i> جلسة مفتوحة</div>
+    <button class="btn btn-start" id="so-open-session-btn" style="width:100%; padding: 12px;"><i class="fas fa-play"></i> تشغيل مفتوح</button>
+
+    <div class="divider"></div>
+
+    <!-- Fixed Time Session -->
+    <div class="modal-section-label"><i class="fas fa-timer"></i> جلسة بوقت محدد</div>
+    <div class="extend-btns">
+      <button class="btn btn-extend" data-minutes="30">30 دقيقة</button>
+      <button class="btn btn-extend" data-minutes="60">60 دقيقة</button>
+      <button class="btn btn-extend" data-minutes="120">120 دقيقة</button>
+    </div>
+    <div class="custom-extend-row">
+      <input type="number" id="so-custom-minutes" placeholder="دقائق مخصصة..." min="1" max="480" step="1" dir="rtl" />
+      <button class="btn btn-extend" id="so-custom-start-btn"><i class="fas fa-play"></i> بدء بوقت مخصص</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="btn cancel-btn" id="so-cancel-btn"><i class="fas fa-times"></i> إلغاء</button>
+  </div>
+</div>
+
+<!-- ─── Audio Alert ───────────────────────── -->
+<audio id="alert-sound" src="https://www.soundjay.com/buttons/sounds/beep-07a.mp3" preload="auto"></audio>
+
+<!-- ─── Main App ──────────────────────────── -->
+<div class="wrapper">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon"><i class="fas fa-gamepad"></i></div>
+      <div class="logo-text">
+        <h1>مدير محل PS</h1>
+        <p>مركز ألعاب بلايستيشن</p>
+      </div>
+    </div>
+    <div class="header-stats">
+      <div class="stat-pill"><span class="dot green"></span><span id="available-count">0</span> متاح</div>
+      <div class="stat-pill"><span class="dot red"></span><span id="running-count">0</span> شغال</div>
+    </div>
+  </header>
+
+  <div class="main-grid">
+
+    <!-- Add Device Panel -->
+    <aside>
+      <div class="panel" style="position:sticky;top:24px;">
+        <p class="panel-title"><i class="fas fa-plus"></i> إضافة جهاز جديد</p>
+        <form id="add-device-form" novalidate>
+          <div class="form-group">
+            <label for="device-name">اسم الجهاز</label>
+            <input type="text" id="device-name" placeholder="مثال: PS5-1، PS4-Pro" maxlength="30" autocomplete="off" required />
+          </div>
+          <div class="form-group">
+            <label for="device-type">نوع الجهاز</label>
+            <input type="text" id="device-type" placeholder="مثال: PlayStation 5" maxlength="30" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label for="device-price">السعر في الساعة (جنيه)</label>
+            <input type="number" id="device-price" placeholder="مثال: 50" min="0.01" step="0.01" required />
+          </div>
+          <button type="submit" class="btn btn-primary">🕹 إضافة الجهاز</button>
+        </form>
+
+        
+      </div>
+    </aside>
+
+    <!-- Devices Grid -->
+    <main>
+      <div class="section-header">
+        <h2 class="section-title">🕹 الأجهزة</h2>
+        <span class="device-count" id="total-count">0 أجهزة</span>
+      </div>
+      
+      <!-- Filter Buttons -->
+      <div class="filter-buttons">
+        <button class="filter-btn active" data-filter="all"><i class="fas fa-redo"></i> الكل</button>
+        <button class="filter-btn" data-filter="running"><i class="fas fa-circle" style="color:var(--red);"></i> شغال</button>
+        <button class="filter-btn" data-filter="available"><i class="fas fa-circle" style="color:var(--green);"></i> متاح</button>
+      </div>
+
+      <div id="devices-grid"></div>
+    </main>
+
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   CONSTANTS & STATE
+══════════════════════════════════════════════════ */
+const STORAGE_KEY = 'ps_shop_devices_v2';
+
+let devices     = [];     // master device list
+let timerIDs    = {};     // RAF handle per device id
+let lastSecond  = {};     // throttle seconds for timer display
+let currentFilter = 'all'; // current filter state: 'all', 'running', 'available'
+let pendingSessionEndedId = null; // device id with session ended
+
+// Stop/Extend modal state
+let pendingStopId      = null;   // device id being stopped
+let sePreviewRAF       = null;   // RAF for live preview in modal
+let extendDebounceFlag = false;  // prevent rapid double-clicks on extend
+
+/* ═══════════════════════════════════════════════════
+   STORAGE
+══════════════════════════════════════════════════ */
+function loadDevices() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    devices = raw ? JSON.parse(raw) : [];
+    // Migration for old data structures
+    devices.forEach(d => {
+      if (typeof d.extraTimeAdded !== 'number') d.extraTimeAdded = 0;
+      if (typeof d.paused !== 'boolean') d.paused = false;
+      if (typeof d.pausedTime !== 'number') d.pausedTime = 0;
+      if (typeof d.isFixedSession !== 'boolean') d.isFixedSession = false;
+      if (typeof d.fixedDuration !== 'number') d.fixedDuration = 0;
+      if (typeof d.endAlertPlayed !== 'boolean') d.endAlertPlayed = false;
+    });
+  } catch {
+    devices = [];
+  }
+}
+
+function saveDevices() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(devices));
+}
+
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+/* ═══════════════════════════════════════════════════
+   FORMATTING HELPERS
+══════════════════════════════════════════════════ */
+function fmtTime(ts) {
+  return new Date(ts).toLocaleTimeString('ar-EG', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+  });
+}
+
+function fmtDuration(ms) {
+  const totalSec = Math.floor(Math.abs(ms) / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const parts = [];
+  if (h) parts.push(`${h}س`);
+  if (m || h) parts.push(`${m}د`);
+  parts.push(`${s}ث`);
+  return parts.join(' ');
+}
+
+function fmtElapsed(ms) {
+  const totalSec = Math.floor(Math.abs(ms) / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = n => String(n).padStart(2, '0');
+  return h > 0
+    ? `${pad(h)}:${pad(m)}:${pad(s)}`
+    : `${pad(m)}:${pad(s)}`;
+}
+
+function calcCost(ms, pricePerHour) {
+  const hours = Math.max(0, ms) / 3_600_000;
+  return (hours * pricePerHour).toFixed(2);
+}
+
+function escapeHTML(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ═══════════════════════════════════════════════════
+   ELAPSED TIME CALCULATION
+   Formula: 
+   - If paused: pausedTime (frozen time)
+   - If running: (now - startTime) + extraTimeAdded
+══════════════════════════════════════════════════ */
+function getElapsedMs(device, now = Date.now()) {
+  if (!device.running || !device.startTime) return 0;
+  
+  // If paused, return the time at pause
+  if (device.paused && device.pausedTime !== undefined) {
+    return device.pausedTime;
+  }
+  
+  // If running normally
+  return (now - device.startTime) + (device.extraTimeAdded || 0);
+}
+
+/* ═══════════════════════════════════════════════════
+   TOAST NOTIFICATIONS
+══════════════════════════════════════════════════ */
+function toast(msg, type = 'info', icon = '<i class="fas fa-bell"></i>') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3100);
+}
+
+/* ═══════════════════════════════════════════════════
+   SESSION RESULT MODAL  (shown after confirming end)
+══════════════════════════════════════════════════ */
+function openResultModal(data) {
+  document.getElementById('modal-device-name').textContent = data.name + ' — ملخص الجلسة';
+  document.getElementById('modal-start').textContent       = fmtTime(data.startTime);
+  document.getElementById('modal-end').textContent         = fmtTime(data.endTime);
+  document.getElementById('modal-duration').textContent    = fmtDuration(data.duration);
+  document.getElementById('modal-cost').textContent        =
+    `${parseFloat(data.cost).toLocaleString('ar-EG', { minimumFractionDigits: 2 })} جنيه`;
+
+  const extraRow = document.getElementById('modal-extra-row');
+  if (data.extraTimeAdded > 0) {
+    extraRow.style.display = '';
+    document.getElementById('modal-extra').textContent = fmtDuration(data.extraTimeAdded);
+  } else {
+    extraRow.style.display = 'none';
+  }
+
+  document.getElementById('result-modal').classList.add('open');
+  document.getElementById('modal-close-btn').focus();
+}
+
+document.getElementById('modal-close-btn').addEventListener('click', () =>
+  document.getElementById('result-modal').classList.remove('open')
+);
+document.getElementById('result-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('result-modal'))
+    document.getElementById('result-modal').classList.remove('open');
+});
+
+/* ═══════════════════════════════════════════════════
+   STOP / EXTEND MODAL
+══════════════════════════════════════════════════ */
+function openStopExtendModal(id) {
+  pendingStopId = id;
+  const d = devices.find(x => x.id === id);
+  if (!d) return;
+
+  document.getElementById('se-device-name').textContent = `${d.name} — إيقاف أو تمديد الجلسة`;
+  document.getElementById('custom-extend-input').value = '';
+
+  document.getElementById('stop-extend-modal').classList.add('open');
+  startSePreview(d);
+}
+
+function closeStopExtendModal() {
+  document.getElementById('stop-extend-modal').classList.remove('open');
+  stopSePreview();
+  pendingStopId = null;
+}
+
+// Live cost/time preview inside the modal using RAF
+function startSePreview(d) {
+  stopSePreview();
+  function tick() {
+    if (!pendingStopId) return;
+    const elapsed = getElapsedMs(d);
+    document.getElementById('se-live-time').textContent = fmtElapsed(elapsed);
+    document.getElementById('se-live-cost').textContent =
+      parseFloat(calcCost(elapsed, d.pricePerHour))
+        .toLocaleString('ar-EG', { minimumFractionDigits: 2 }) + ' ج';
+    sePreviewRAF = requestAnimationFrame(tick);
+  }
+  sePreviewRAF = requestAnimationFrame(tick);
+}
+
+function stopSePreview() {
+  if (sePreviewRAF) { cancelAnimationFrame(sePreviewRAF); sePreviewRAF = null; }
+}
+
+// Wire session-ended modal: extend preset buttons
+document.querySelectorAll('#session-ended-modal .btn-extend[data-extend-minutes]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const minutes = parseInt(btn.dataset.extendMinutes, 10);
+    if (pendingSessionEndedId) {
+      extendSession(pendingSessionEndedId, minutes);
+      closeSessionEndedModal();
+    }
+  });
+});
+
+// Wire custom extend button in session-ended modal
+document.getElementById('sen-custom-extend-btn').addEventListener('click', () => {
+  if (!pendingSessionEndedId) return;
+  const input = document.getElementById('sen-custom-minutes');
+  const val = parseInt(input.value, 10);
+  if (isNaN(val) || val < 1) {
+    toast('أدخل عدد دقائق صحيح (1 أو أكثر).', 'error', '<i class="fas fa-exclamation-triangle"></i>');
+    input.focus();
+    return;
+  }
+  if (val > 480) {
+    toast('الحد الأقصى للتمديد المخصص هو 480 دقيقة.', 'error', '<i class="fas fa-exclamation-triangle"></i>');
+    input.focus();
+    return;
+  }
+  extendSession(pendingSessionEndedId, val);
+  closeSessionEndedModal();
+});
+
+// Confirm end in session-ended modal
+document.getElementById('sen-confirm-end-btn').addEventListener('click', () => {
+  if (pendingSessionEndedId) {
+    finalizeStop(pendingSessionEndedId);
+    closeSessionEndedModal();
+  }
+});
+
+// Close on backdrop click
+document.getElementById('session-ended-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('session-ended-modal')) {
+    closeSessionEndedModal();
+  }
+});
+
+// Wire extend preset buttons
+document.querySelectorAll('#stop-extend-modal .btn-extend[data-minutes]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const minutes = parseInt(btn.dataset.minutes, 10);
+    if (pendingStopId) extendSession(pendingStopId, minutes);
+  });
+});
+
+// Wire custom extend button
+document.getElementById('custom-extend-btn').addEventListener('click', () => {
+  if (!pendingStopId) return;
+  const input = document.getElementById('custom-extend-input');
+  const val = parseInt(input.value, 10);
+  if (isNaN(val) || val < 1) {
+    toast('أدخل عدد دقائق صحيح (1 أو أكثر).', 'error', '⚠️');
+    input.focus();
+    return;
+  }
+  if (val > 480) {
+    toast('الحد الأقصى للتمديد المخصص هو 480 دقيقة.', 'error', '<i class="fas fa-exclamation-triangle"></i>');
+    input.focus();
+    return;
+  }
+  extendSession(pendingStopId, val);
+  input.value = '';
+});
+
+// Confirm end
+document.getElementById('se-confirm-end-btn').addEventListener('click', () => {
+  if (pendingStopId) finalizeStop(pendingStopId);
+});
+
+// Cancel / back
+document.getElementById('se-cancel-btn').addEventListener('click', closeStopExtendModal);
+
+// Close on backdrop click
+document.getElementById('stop-extend-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('stop-extend-modal')) closeStopExtendModal();
+});
+
+function extendSession(deviceId, minutes) {
+  // Debounce to prevent rapid double-clicks
+  if (extendDebounceFlag) return;
+  extendDebounceFlag = true;
+  setTimeout(() => { extendDebounceFlag = false; }, 800);
+
+  if (minutes < 1 || !isFinite(minutes)) {
+    toast('مدة التمديد غير صحيحة.', 'error', '<i class="fas fa-exclamation-triangle"></i>');
+    return;
+  }
+
+  const d = devices.find(x => x.id === deviceId);
+  if (!d) return;
+  if (!d.running || !d.startTime) {
+    toast('لا توجد جلسة نشطة لتمديدها.', 'error', '<i class="fas fa-exclamation-triangle"></i>');
+    return;
+  }
+
+  const extraMs = minutes * 60 * 1000;
+  d.extraTimeAdded = (d.extraTimeAdded || 0) + extraMs;
+  saveDevices();
+
+  updateTotalWithExtension(deviceId);
+  closeStopExtendModal();
+
+  toast(`✅ تم تمديد جلسة ${d.name} بـ ${minutes} دقيقة!`, 'warning', '<i class="fas fa-hourglass-half"></i>');
+}
+
+/* ═══════════════════════════════════════════════════
+   UPDATE TOTAL WITH EXTENSION
+   Refreshes the extension badge on the device card.
+══════════════════════════════════════════════════ */
+function updateTotalWithExtension(deviceId) {
+  const d = devices.find(x => x.id === deviceId);
+  if (!d) return;
+
+  const card = document.getElementById(`card-${deviceId}`);
+  if (!card) return;
+
+  const extraBadge = card.querySelector('.extra-time-indicator');
+  if (extraBadge) {
+    if (d.extraTimeAdded > 0) {
+      extraBadge.textContent = `+${fmtDuration(d.extraTimeAdded)} مضافة`;
+      extraBadge.style.display = 'block';
+    } else {
+      extraBadge.style.display = 'none';
+    }
+  }
+
+  // Update the card's extended badge in card-price area
+  let extBadge = card.querySelector('.extended-badge');
+  if (d.extraTimeAdded > 0) {
+    if (!extBadge) {
+      extBadge = document.createElement('span');
+      extBadge.className = 'extended-badge';
+      const priceDiv = card.querySelector('.card-price');
+      if (priceDiv) priceDiv.appendChild(extBadge);
+    }
+    extBadge.textContent = `+${fmtDuration(d.extraTimeAdded)}`;
+  } else if (extBadge) {
+    extBadge.remove();
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   FINALIZE STOP  (called only when user confirms end)
+══════════════════════════════════════════════════ */
+function finalizeStop(id) {
+  const d = devices.find(x => x.id === id);
+  if (!d || !d.running || !d.startTime) {
+    toast('لا توجد جلسة نشطة لإيقافها!', 'error', '<i class="fas fa-exclamation-triangle"></i>');
+    closeStopExtendModal();
+    return;
+  }
+
+  const endTime      = Date.now();
+  const totalDuration = getElapsedMs(d, endTime);
+  const cost          = calcCost(totalDuration, d.pricePerHour);
+
+  if (timerIDs[id]) { cancelAnimationFrame(timerIDs[id]); delete timerIDs[id]; }
+
+  const sessionData = {
+    name: d.name,
+    startTime: d.startTime,
+    endTime,
+    duration: totalDuration,
+    extraTimeAdded: d.extraTimeAdded || 0,
+    cost
+  };
+
+  // Reset device state
+  d.running        = false;
+  d.startTime      = null;
+  d.extraTimeAdded = 0;
+  d.paused         = false;
+  d.pausedTime     = 0;
+  d.isFixedSession = false;
+  d.fixedDuration  = 0;
+  d.endAlertPlayed = false;
+  saveDevices();
+
+  updateCardUIAfterStop(id);
+  closeStopExtendModal();
+  openResultModal(sessionData);
+  toast(`انتهت جلسة ${d.name} · ${cost} جنيه`, 'info', ' ');
+}
+
+/* ═══════════════════════════════════════════════════
+   FILTER LOGIC
+══════════════════════════════════════════════════ */
+function setFilter(filter) {
+  currentFilter = filter;
+  
+  // Update active button
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    if (btn.dataset.filter === filter) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+  
+  // Re-render with filter applied
+  render();
+}
+
+function getFilteredDevices() {
+  if (currentFilter === 'running') {
+    return devices.filter(d => d.running && d.startTime);
+  } else if (currentFilter === 'available') {
+    return devices.filter(d => !d.running || !d.startTime);
+  }
+  return devices; // 'all'
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER
+══════════════════════════════════════════════════ */
+function render() {
+  const grid = document.getElementById('devices-grid');
+  const filteredDevices = getFilteredDevices();
+
+  // Kill all running timers before re-render
+  Object.values(timerIDs).forEach(id => cancelAnimationFrame(id));
+  timerIDs   = {};
+  lastSecond = {};
+
+  if (filteredDevices.length === 0) {
+    const emptyMsg = currentFilter === 'running' 
+      ? 'لا توجد أجهزة شغالة الآن'
+      : currentFilter === 'available'
+      ? 'لا توجد أجهزة متاحة'
+      : 'لا توجد أجهزة بعد';
+    const emptyHint = currentFilter === 'running'
+      ? 'جميع الأجهزة متاحة للاستخدام.'
+      : currentFilter === 'available'
+      ? 'جميع الأجهزة قيد الاستخدام.'
+      : 'أضف أول جهاز بلايستيشن باستخدام النموذج على اليمين.';
+
+    grid.innerHTML = `
+      <div class="empty-state">
+        <span class="emoji">🎮</span>
+        <h3>${emptyMsg}</h3>
+        <p>${emptyHint}</p>
+      </div>`;
+    updateStats();
+    return;
+  }
+
+  grid.innerHTML = filteredDevices.map(deviceCardHTML).join('');
+
+  filteredDevices.forEach(d => {
+    document.getElementById(`btn-start-${d.id}`).addEventListener('click', () => startSession(d.id));
+    document.getElementById(`btn-stop-${d.id}`).addEventListener('click',  () => openStopExtendModal(d.id));
+    document.getElementById(`btn-delete-${d.id}`).addEventListener('click', () => deleteDevice(d.id));
+
+    if (d.running && d.startTime) startTimer(d.id);
+  });
+
+  // Wire filter buttons
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => setFilter(btn.dataset.filter));
+  });
+
+  updateStats();
+}
+
+function deviceCardHTML(d) {
+  const isRunning = d.running && !!d.startTime;
+  const hasExtra  = (d.extraTimeAdded || 0) > 0;
+  const startLabel = isRunning
+    ? `بدأت الساعة ${fmtTime(d.startTime)}`
+    : 'لا توجد جلسة نشطة';
+
+  const typeTag = d.type
+    ? `<span class="ps-badge">${escapeHTML(d.type)}</span>`
+    : '';
+
+  const extendedBadge = (isRunning && hasExtra)
+    ? `<span class="extended-badge">+${fmtDuration(d.extraTimeAdded)}</span>`
+    : '';
+
+  return `
+    <div class="device-card ${isRunning ? 'running' : ''}" id="card-${d.id}">
+      <div class="card-header">
+        <div>
+          <div class="card-name">${escapeHTML(d.name)}</div>
+          <div class="card-price">
+            ${typeTag}
+            <span class="price-val">${parseFloat(d.pricePerHour).toLocaleString('ar-EG')}</span>
+            <span>ج/ساعة</span>
+            ${extendedBadge}
+          </div>
+        </div>
+        <span class="status-badge ${isRunning ? 'running' : 'available'}">
+          ${isRunning ? '<i class="fas fa-play-circle"></i> شغال' : '<i class="fas fa-check-circle"></i> متاح'}
+        </span>
+      </div>
+
+      <div class="timer-block" id="timer-block-${d.id}" style="${isRunning ? 'display:flex' : 'display:none'}">
+        <span class="timer-icon"><i class="fas fa-hourglass-end"></i></span>
+        <div>
+          <div class="timer-display" id="timer-${d.id}">00:00</div>
+          <div class="timer-label">الوقت المنقضي</div>
+          <div class="extra-time-indicator" style="${hasExtra && isRunning ? 'display:block' : 'display:none'}">
+            ${hasExtra ? '+' + fmtDuration(d.extraTimeAdded) + ' مضافة' : ''}
+          </div>
+        </div>
+      </div>
+
+      <div class="card-actions">
+        <button class="btn btn-start" id="btn-start-${d.id}" ${isRunning ? 'disabled' : ''}>
+          <i class="fas fa-play"></i> ابدأ
+        </button>
+        <button class="btn btn-stop"  id="btn-stop-${d.id}"  ${!isRunning ? 'disabled' : ''}>
+          <i class="fas fa-stop"></i> وقف
+        </button>
+      </div>
+
+      <div class="card-footer">
+        <span class="start-time-label" id="start-label-${d.id}">${startLabel}</span>
+        <button class="btn btn-danger-outline" id="btn-delete-${d.id}" title="حذف الجهاز"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   LIVE TIMER (RAF-based) — uses getElapsedMs()
+   so it automatically accounts for extraTimeAdded
+   Handles both open and fixed-duration sessions
+══════════════════════════════════════════════════ */
+function startTimer(id) {
+  function tick() {
+    const d = devices.find(x => x.id === id);
+    if (!d || !d.running || !d.startTime) {
+      if (timerIDs[id]) {
+        cancelAnimationFrame(timerIDs[id]);
+        delete timerIDs[id];
+      }
+      return;
+    }
+
+    const elapsed = getElapsedMs(d);
+    const sec     = Math.floor(elapsed / 1000);
+
+    if (sec !== lastSecond[id]) {
+      lastSecond[id] = sec;
+      const el = document.getElementById(`timer-${id}`);
+      if (el) {
+        // For fixed sessions, show remaining time
+        if (d.isFixedSession) {
+          const remainingMs = d.fixedDuration - elapsed;
+          if (remainingMs > 0) {
+            el.textContent = fmtElapsed(remainingMs);
+            el.style.color = 'var(--gold)';
+          } else {
+            // Time has ended - freeze at 00:00 with red color
+            el.textContent = '00:00';
+            el.style.color = 'var(--red)';
+            
+            // Trigger alert once
+            if (!d.endAlertPlayed) {
+              triggerEndAlert(d);
+            }
+            
+            // STOP TIMER - don't continue counting
+            if (timerIDs[id]) {
+              cancelAnimationFrame(timerIDs[id]);
+              delete timerIDs[id];
+            }
+            return;
+          }
+        } else {
+          // For open sessions, show elapsed time
+          el.textContent = fmtElapsed(elapsed);
+          el.style.color = 'var(--red)';
+        }
+      }
+    }
+
+    timerIDs[id] = requestAnimationFrame(tick);
+  }
+  timerIDs[id] = requestAnimationFrame(tick);
+}
+
+/* ═══════════════════════════════════════════════════
+   TRIGGER END ALERT (for fixed sessions)
+══════════════════════════════════════════════════ */
+function triggerEndAlert(device) {
+  if (device.endAlertPlayed) return;
+
+  const alertSound = document.getElementById('alert-sound');
+  
+  // Try to play sound - multiple times for urgency
+  alertSound.volume = 1;
+  for (let i = 0; i < 3; i++) {
+    setTimeout(() => { alertSound.play().catch(() => {}); }, i * 500);
+  }
+  
+  // Fallback: Web Audio API beep (longer duration)
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+    osc.connect(audioCtx.destination);
+    osc.start();
+    setTimeout(() => osc.stop(), 300);
+  } catch (e) {
+    console.warn("Audio failed:", e);
+  }
+
+  device.endAlertPlayed = true;
+  saveDevices();
+  
+  // Open session ended modal instead of toast
+  openSessionEndedModal(device.id);
+}
+
+/* ═══════════════════════════════════════════════════
+   SESSION ENDED MODAL HANDLERS
+══════════════════════════════════════════════════ */
+function openSessionEndedModal(deviceId) {
+  pendingSessionEndedId = deviceId;
+  const d = devices.find(x => x.id === deviceId);
+  if (!d) return;
+
+  // Update modal content
+  document.getElementById('sen-device-name').textContent = `جهاز ${d.name} - الوقت انتهى`;
+  document.getElementById('sen-duration').textContent = fmtElapsed(d.fixedDuration);
+  document.getElementById('sen-cost').textContent = 
+    parseFloat(calcCost(d.fixedDuration, d.pricePerHour))
+      .toLocaleString('ar-EG', { minimumFractionDigits: 2 }) + ' جنيه';
+  document.getElementById('sen-custom-minutes').value = '';
+
+  document.getElementById('session-ended-modal').classList.add('open');
+}
+
+function closeSessionEndedModal() {
+  document.getElementById('session-ended-modal').classList.remove('open');
+  pendingSessionEndedId = null;
+}
+
+/* ═══════════════════════════════════════════════════
+   OPEN START OPTIONS MODAL
+══════════════════════════════════════════════════ */
+let pendingStartId = null;
+
+function openStartModal(deviceId) {
+  pendingStartId = deviceId;
+  const d = devices.find(x => x.id === deviceId);
+  if (!d) return;
+
+  document.getElementById('so-device-name').textContent = `جهاز: ${d.name}`;
+  document.getElementById('so-custom-minutes').value = '';
+  document.getElementById('start-options-modal').classList.add('open');
+}
+
+function closeStartModal() {
+  document.getElementById('start-options-modal').classList.remove('open');
+  pendingStartId = null;
+}
+
+/* ═══════════════════════════════════════════════════
+   START OPEN SESSION (unlimited time)
+══════════════════════════════════════════════════ */
+function startOpenSession(deviceId) {
+  const d = devices.find(x => x.id === deviceId);
+  if (!d || d.running) return;
+
+  d.running        = true;
+  d.startTime      = Date.now();
+  d.extraTimeAdded = 0;
+  d.paused         = false;
+  d.pausedTime     = 0;
+  d.lastResumeTime = Date.now();
+  saveDevices();
+
+  startTimer(d.id);
+  updateCardUIAfterStart(d.id);
+  closeStartModal();
+  toast(`بدأت جلسة مفتوحة لـ ${d.name}`, 'success', '<i class="fas fa-play"></i>');
+}
+
+/* ═══════════════════════════════════════════════════
+   START FIXED SESSION (with duration)
+══════════════════════════════════════════════════ */
+function startFixedSession(deviceId, minutes) {
+  const d = devices.find(x => x.id === deviceId);
+  if (!d || d.running) return;
+  if (!minutes || minutes <= 0) {
+    toast('الرجاء إدخال مدة زمنية صحيحة.', 'error', '<i class="fas fa-exclamation-triangle"></i>');
+    return;
+  }
+
+  d.running        = true;
+  d.startTime      = Date.now();
+  d.isFixedSession = true;
+  d.fixedDuration  = minutes * 60 * 1000;
+  d.endAlertPlayed = false;
+  d.extraTimeAdded = 0;
+  d.paused         = false;
+  d.pausedTime     = 0;
+  d.lastResumeTime = Date.now();
+  saveDevices();
+
+  startTimer(d.id);
+  updateCardUIAfterStart(d.id);
+  closeStartModal();
+  toast(`بدأت جلسة لمدة ${minutes} دقيقة لـ ${d.name}`, 'success', '<i class="fas fa-hourglass-half"></i>');
+}
+
+/* ═══════════════════════════════════════════════════
+   START SESSION (opens modal)
+══════════════════════════════════════════════════ */
+function startSession(id) {
+  const d = devices.find(x => x.id === id);
+  if (!d || d.running) {
+    toast('الجلسة شغالة بالفعل!', 'error', '<i class="fas fa-exclamation-triangle"></i>');
+    return;
+  }
+
+  // Open the modal to choose between open or fixed session
+  openStartModal(id);
+}
+
+/* ═══════════════════════════════════════════════════
+   UPDATE CARD AFTER START
+══════════════════════════════════════════════════ */
+function updateCardUIAfterStart(id) {
+  const d = devices.find(x => x.id === id);
+  if (!d) return;
+
+  const card = document.getElementById(`card-${id}`);
+  if (!card) return;
+
+  card.classList.add('running');
+  card.style.borderColor = 'var(--red-border)';
+
+  const badge = card.querySelector('.status-badge');
+  badge.className   = 'status-badge running';
+  badge.textContent = '🔴 شغال';
+
+  const timerBlock = document.getElementById(`timer-block-${id}`);
+  timerBlock.style.display = 'flex';
+
+  const btnStart = document.getElementById(`btn-start-${id}`);
+  const btnStop  = document.getElementById(`btn-stop-${id}`);
+  if (btnStart) btnStart.disabled = true;
+  if (btnStop)  btnStop.disabled  = false;
+
+  document.getElementById(`start-label-${id}`).textContent = `بدأت الساعة ${fmtTime(d.startTime)}`;
+
+  updateStats();
+}
+
+function updateCardUIAfterStop(id) {
+    const card = document.getElementById(`card-${id}`);
+    if (!card) return;
+
+    card.classList.remove('running');
+    card.style.borderColor = '';
+    
+    card.querySelector('.status-badge').className = 'status-badge available';
+    card.querySelector('.status-badge').textContent = '🟢 متاح';
+    
+    const timerBlock = card.querySelector('.timer-block');
+    if (timerBlock) timerBlock.style.display = 'none';
+    
+    const timerEl = card.querySelector('.timer-display');
+    if (timerEl) timerEl.textContent = '00:00';
+    
+    card.querySelector('.btn-start').disabled = false;
+    card.querySelector('.btn-stop').disabled = true;
+    
+    const pauseBtn = card.querySelector('.btn-pause-resume');
+    if (pauseBtn) pauseBtn.remove();
+    
+    card.querySelector('.start-time-label').textContent = 'لا توجد جلسة نشطة';
+    
+    // Remove badges
+    const extBadge = card.querySelector('.extended-badge');
+    if (extBadge) extBadge.remove();
+    const extraInd = card.querySelector('.extra-time-indicator');
+    if (extraInd) extraInd.style.display = 'none';
+}
+function deleteDevice(id) {
+  const d = devices.find(x => x.id === id);
+  if (!d) return;
+
+  if (d.running) {
+    toast('أوقف الجلسة الأول قبل حذف الجهاز!', 'error', '⚠️');
+    return;
+  }
+
+  if (!confirm(`حذف "${d.name}"؟ هذا الإجراء لا يمكن التراجع عنه.`)) return;
+
+  if (timerIDs[id]) { cancelAnimationFrame(timerIDs[id]); delete timerIDs[id]; }
+
+  devices = devices.filter(x => x.id !== id);
+  saveDevices();
+  render();
+  toast(`تم حذف ${d.name}.`, 'info', '🗑');
+}
+
+/* ═══════════════════════════════════════════════════
+   STATS BAR
+══════════════════════════════════════════════════ */
+function updateStats() {
+  const total     = devices.length;
+  const running   = devices.filter(d => d.running).length;
+  const available = total - running;
+  const word      = total === 1 ? 'جهاز' : 'أجهزة';
+
+  document.getElementById('total-count').textContent     = `${total} ${word}`;
+  document.getElementById('available-count').textContent = available;
+  document.getElementById('running-count').textContent   = running;
+}
+
+/* ═══════════════════════════════════════════════════
+   ADD DEVICE FORM
+══════════════════════════════════════════════════ */
+document.getElementById('add-device-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+
+  const nameInput  = document.getElementById('device-name');
+  const typeInput  = document.getElementById('device-type');
+  const priceInput = document.getElementById('device-price');
+
+  const name  = nameInput.value.trim();
+  const type  = typeInput.value.trim();
+  const price = parseFloat(priceInput.value);
+
+  if (!name) {
+    toast('من فضلك أدخل اسم الجهاز.', 'error', '⚠️');
+    nameInput.focus();
+    return;
+  }
+  if (isNaN(price) || price <= 0) {
+    toast('من فضلك أدخل سعر صحيح للساعة.', 'error', '⚠️');
+    priceInput.focus();
+    return;
+  }
+  if (devices.some(d => d.name.toLowerCase() === name.toLowerCase())) {
+    toast(`يوجد جهاز باسم "${name}" بالفعل!`, 'error', '⚠️');
+    nameInput.focus();
+    return;
+  }
+
+  devices.push({
+    id:             genId(),
+    name,
+    type,
+    pricePerHour:   price,
+    running:        false,
+    startTime:      null,
+    extraTimeAdded: 0,      // NEW field persisted in localStorage
+    paused:         false,  // NEW pause state
+    pausedTime:     0,      // NEW time frozen at pause
+    lastResumeTime: null,   // NEW for resume tracking
+  });
+
+  saveDevices();
+  render();
+
+  nameInput.value = '';
+  typeInput.value = '';
+  priceInput.value = '';
+  nameInput.focus();
+
+  toast(`تم إضافة ${name} بنجاح!`, 'success', '🎮');
+});
+
+/* ═══════════════════════════════════════════════════
+   KEYBOARD — Escape closes any open modal
+══════════════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('result-modal').classList.remove('open');
+    closeStopExtendModal();
+    closeStartModal();
+  }
+});
+
+/* ═══════════════════════════════════════════════════
+   BOOT & EVENT LISTENERS
+══════════════════════════════════════════════════ */
+loadDevices();
+render();
+
+// Restore timers for running sessions
+devices.forEach(d => {
+  if (d.running && d.startTime) {
+    startTimer(d.id);
+  }
+});
+
+// START OPTIONS MODAL LISTENERS
+document.getElementById('so-open-session-btn').addEventListener('click', () => {
+  if (pendingStartId) startOpenSession(pendingStartId);
+});
+
+document.querySelectorAll('#start-options-modal .btn-extend[data-minutes]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const minutes = parseInt(btn.dataset.minutes, 10);
+    if (pendingStartId) startFixedSession(pendingStartId, minutes);
+  });
+});
+
+document.getElementById('so-custom-start-btn').addEventListener('click', () => {
+  const input = document.getElementById('so-custom-minutes');
+  const minutes = parseInt(input.value, 10);
+  if (isNaN(minutes) || minutes <= 0) {
+    toast('أدخل عدد دقائق صحيح (1 أو أكثر).', 'error', '⚠️');
+    input.focus();
+    return;
+  }
+  if (minutes > 480) {
+    toast('الحد الأقصى هو 480 دقيقة.', 'error', '⚠️');
+    input.focus();
+    return;
+  }
+  if (pendingStartId) startFixedSession(pendingStartId, minutes);
+});
+
+document.getElementById('so-cancel-btn').addEventListener('click', closeStartModal);
+
+document.getElementById('start-options-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('start-options-modal')) closeStartModal();
+});
+</script>
+</body>
+</html>
