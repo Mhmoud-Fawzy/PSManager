@@ -1,0 +1,31 @@
+Options -Indexes
+DirectorySlash Off
+
+# Block direct access to sensitive directories
+<FilesMatch "^\.env$">
+  Order allow,deny
+  Deny from all
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /ps-manager/
+
+  # Allow direct access to existing files and directories
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+
+  # Route all API calls through the api directory
+  RewriteRule ^api/(.*)$ api/$1.php [L,QSA]
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# PHP settings
+php_flag display_errors Off
+php_value error_log "logs/php_errors.log"

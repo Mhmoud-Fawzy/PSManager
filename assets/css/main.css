@@ -1,0 +1,122 @@
+/* ==========================================================
+   main.css — Design Tokens, Reset, Typography, Base
+   ========================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
+
+/* ── Design Tokens ── */
+:root {
+  --bg-base:        #080812;
+  --bg-card:        #0f0f1e;
+  --bg-card-hover:  #17172c;
+  --bg-glass:       rgba(255,255,255,0.035);
+  --bg-glass-mid:   rgba(255,255,255,0.06);
+  --border:         rgba(255,255,255,0.07);
+  --border-mid:     rgba(255,255,255,0.12);
+  --border-focus:   rgba(110,70,255,0.65);
+
+  --accent:         #6e46ff;
+  --accent-light:   #9d7fff;
+  --accent-dim:     rgba(110,70,255,0.15);
+  --accent-glow:    rgba(110,70,255,0.3);
+
+  --ps-blue:        #003087;
+  --ps-blue-light:  #0050c8;
+
+  --green:          #00e676;
+  --green-bg:       rgba(0,230,118,0.10);
+  --green-border:   rgba(0,230,118,0.28);
+
+  --red:            #ff1744;
+  --red-bg:         rgba(255,23,68,0.10);
+  --red-border:     rgba(255,23,68,0.28);
+
+  --orange:         #ff6d00;
+  --orange-light:   #ff9100;
+  --orange-bg:      rgba(255,109,0,0.10);
+  --orange-border:  rgba(255,109,0,0.32);
+
+  --gold:           #ffc400;
+  --gold-bg:        rgba(255,196,0,0.10);
+  --gold-border:    rgba(255,196,0,0.30);
+
+  --cyan:           #00e5ff;
+  --cyan-bg:        rgba(0,229,255,0.08);
+  --cyan-border:    rgba(0,229,255,0.25);
+
+  --text-primary:   #ebebff;
+  --text-secondary: #8888aa;
+  --text-muted:     #4e4e6a;
+
+  --radius-sm:  8px;
+  --radius-md:  13px;
+  --radius-lg:  18px;
+  --radius-xl:  26px;
+
+  --shadow-card: 0 8px 40px rgba(0,0,0,0.55);
+  --shadow-glow: 0 0 28px var(--accent-glow);
+  --shadow-sm:   0 2px 12px rgba(0,0,0,0.4);
+  --transition:  0.22s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ── Reset ── */
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+
+html { scroll-behavior:smooth; }
+
+body {
+  font-family:'Cairo',system-ui,sans-serif;
+  background:var(--bg-base);
+  color:var(--text-primary);
+  min-height:100vh;
+  overflow-x:hidden;
+  direction:rtl;
+}
+
+/* ── Ambient grid overlay ── */
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(110,70,255,0.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(110,70,255,0.03) 1px,transparent 1px);
+  background-size:48px 48px;
+  pointer-events:none;
+  z-index:0;
+}
+
+/* ── Top-right ambient blob ── */
+body::after {
+  content:'';
+  position:fixed;
+  top:-25%; right:-8%;
+  width:560px; height:560px;
+  background:radial-gradient(circle,rgba(110,70,255,0.11) 0%,transparent 68%);
+  pointer-events:none;
+  z-index:0;
+  animation:driftBlob 20s ease-in-out infinite alternate;
+}
+
+.blob2 {
+  position:fixed;
+  bottom:-20%; left:-10%;
+  width:480px; height:480px;
+  background:radial-gradient(circle,rgba(0,229,255,0.06) 0%,transparent 68%);
+  pointer-events:none;
+  z-index:0;
+  animation:driftBlob 24s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes driftBlob {
+  from { transform:translate(0,0) scale(1); }
+  to   { transform:translate(-70px,110px) scale(1.14); }
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar        { width:5px; }
+::-webkit-scrollbar-track  { background:transparent; }
+::-webkit-scrollbar-thumb  { background:rgba(110,70,255,0.28); border-radius:99px; }
+
+/* ── Utility ── */
+.hidden { display:none !important; }
